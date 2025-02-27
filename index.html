@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Inference</title>
+        <style>
+            #fps {
+                position: absolute;
+                left: 0;
+                top: 0;
+                background: rgba(0,0,0,.3);
+                width: 90px;
+                color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Inference</h1>
+        <div>
+            <button id="stream" disabled>Stream</button>
+            <button id="stop" disabled>Stop</button>
+        </div>
+        <video id="in" muted autoplay></video>
+        <video id="wrtc" muted autoplay></video>
+        <div style="position: relative;">
+            <div id="fps"></div>
+            <canvas id="outputCanvas" width="1280" height="960"></canvas>
+        </div>
+        <script type="module">
+            import { getRawFrames } from './raw-frames.mjs';
+            import ModelWrapper, {MIN_TILE_OVERLAP, MODEL_SCALE, MODEL_WIDTH, MODEL_HEIGHT} from './model-wrapper.mjs';
+            import { passViaWebRTC } from './webrtc-pass.mjs';
+
+            const streamButton = document.getElementById('stream');
+            const outputCanvas = document.getElementById('outputCanvas');
+            const ctx = outputCanvas.getContext('2d');
+            const stopButton = document.getElementById('stop');
+            const fpsEl = document.getElementById('fps');
+
+            streamButton.disabled = false;
+            let stopped = false;
+
+            stopButton.onclick = () => {
+                stopped = true;
+                stopButton.disabled = true;
+            };
+
+            const WIDTH = 320;
+            const HEIGHT = 240;
+
+            streamButton.addEventListener('click', async () => {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: WIDTH, height: HEIGHT } });
+                document.getElementById('in').srcObject = stream;
+                const wrtcStream = await passViaWebRTC(stream);
+                document.getElementById('wrtc').srcObject = wrtcStream;
+                stopButton.disabled = false;
+                stopped = false;
+                streamButton.disabled = true;
+                await processStream(wrtcStream);
+                [wrtcStream, stream].forEach((stream) => {
+                    stream.getTracks().forEach(track => track.stop());
+                });
+                streamButton.disabled = false;
+                stopButton.disabled = true;
+            });
+
+            const modelWrapper = new ModelWrapper(WIDTH, HEIGHT);
+
+            async function processStream(stream) {
+                console.log('Media stream:', stream);
+                console.log('Model wrapper:', modelWrapper);
+                const frames = getRawFrames(stream, { width: WIDTH, height: HEIGHT, buffer: modelWrapper.inputFrame });
+
+                let frame;
+                let slidingAverage = 0;
+                const slidingAverageA = 0.975;
+                const slidingAverageB = 1 - slidingAverageA;
+
+                const layout = modelWrapper.layout;
+
+                for await (frame of frames) {
+                    if (stopped) break;
+                    if (frame.unexpectedDims) continue;
+
+                    const ts = performance.now();
+                    const frames = await modelWrapper.processFrame(frame.buffer);
+                    const msPerFrame = performance.now() - ts;
+
+                    const fps = 1000 / msPerFrame;
+                    slidingAverage = slidingAverageA * slidingAverage + slidingAverageB * fps;
+                    fpsEl.textContent = slidingAverage.toFixed(1) + ' (' + fps.toFixed(2) + ')';
+
+                    for (let i = 0; i < layout.length; i += 1) {
+                        if (frames[i]) {
+                            const tile = layout[i];
+                            ctx.drawImage(frames[i], tile.x * MODEL_SCALE, tile.y * MODEL_SCALE);
+                            frames[i].close();
+                        }
+                    }
+                }
+                console.log('Last frame: ', frame);
+            }
+        </script>
+    </body>
+</html>

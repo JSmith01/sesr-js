@@ -1,0 +1,12 @@
+{
+  "name": "js",
+  "version": "1.0.0",
+  "description": "",
+  "license": "MIT",
+  "author": "Dmitry Zlygin",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
