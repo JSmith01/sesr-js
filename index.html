@@ -11,11 +11,26 @@
                 width: 90px;
                 color: white;
             }
+            #wrtc {
+                width: 640px;
+                height: 360px;
+            }
         </style>
     </head>
     <body>
         <h1>Inference</h1>
         <div>
+            <select id="ml">
+                <option value="quickSr">QuickSRNet small</option>
+                <option value="xlsr">XLSR</option>
+                <option value="sesr_m5_">SESR M5</option>
+            </select>
+            <select id="res">
+                <option value="4x180">180p x4</option>
+                <option value="2x360">360p x2</option>
+                <option value="2x1080">1080p x2</option>
+            </select><button id="ok">OK</button>
+            <label>Screen: <input type="checkbox" id="screen"></label>
             <button id="stream" disabled>Stream</button>
             <button id="stop" disabled>Stop</button>
         </div>
@@ -23,18 +38,51 @@
         <video id="wrtc" muted autoplay></video>
         <div style="position: relative;">
             <div id="fps"></div>
-            <canvas id="outputCanvas" width="1280" height="960"></canvas>
+            <canvas id="outputCanvas"></canvas>
         </div>
         <script type="module">
             import { getRawFrames } from './raw-frames.mjs';
-            import ModelWrapper, {MIN_TILE_OVERLAP, MODEL_SCALE, MODEL_WIDTH, MODEL_HEIGHT} from './model-wrapper.mjs';
+            import ModelWrapper from './model-wrapper.mjs';
+            import * as models from './models.mjs';
+            let WIDTH = 640, HEIGHT = 360;
+            let model = models.quickSr2x360;
+            let modelWrapper = new ModelWrapper(WIDTH, HEIGHT, model);
+
+
             import { passViaWebRTC } from './webrtc-pass.mjs';
 
             const streamButton = document.getElementById('stream');
             const outputCanvas = document.getElementById('outputCanvas');
+            outputCanvas.width = WIDTH * model.scale;
+            outputCanvas.height = HEIGHT * model.scale;
+
             const ctx = outputCanvas.getContext('2d');
             const stopButton = document.getElementById('stop');
+            const screenChk = document.getElementById('screen');
             const fpsEl = document.getElementById('fps');
+            const mlSel = document.getElementById('ml');
+            const resSel = document.getElementById('res');
+            const okBtn = document.getElementById('res');
+            okBtn.onclick = () => {
+                if (streamButton.disabled) return;
+
+                const modelName = mlSel.value + resSel.value;
+                if (!models[modelName]) {
+                    console.warn(`No model ${modelName}`);
+                    return;
+                }
+                model = models[modelName];
+                switch (resSel.value) {
+                    case '4x180': WIDTH = 320; HEIGHT = 180; break;
+                    case '2x360': WIDTH = 640; HEIGHT = 360; break;
+                    case '2x1080': WIDTH = 1920; HEIGHT = 1080; break;
+                    default: WIDTH = 640; HEIGHT = 360; break;
+                }
+                outputCanvas.width = WIDTH * model.scale;
+                outputCanvas.height = HEIGHT * model.scale;
+                modelWrapper = new ModelWrapper(WIDTH, HEIGHT, model);
+            };
+
 
             streamButton.disabled = false;
             let stopped = false;
@@ -44,11 +92,9 @@
                 stopButton.disabled = true;
             };
 
-            const WIDTH = 320;
-            const HEIGHT = 240;
-
             streamButton.addEventListener('click', async () => {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: WIDTH, height: HEIGHT } });
+                const call = screenChk.checked ? 'getDisplayMedia' : 'getUserMedia';
+                const stream = await navigator.mediaDevices[call]({ video: { width: WIDTH, height: HEIGHT } });
                 document.getElementById('in').srcObject = stream;
                 const wrtcStream = await passViaWebRTC(stream);
                 document.getElementById('wrtc').srcObject = wrtcStream;
@@ -62,8 +108,6 @@
                 streamButton.disabled = false;
                 stopButton.disabled = true;
             });
-
-            const modelWrapper = new ModelWrapper(WIDTH, HEIGHT);
 
             async function processStream(stream) {
                 console.log('Media stream:', stream);
@@ -89,11 +133,16 @@
                     slidingAverage = slidingAverageA * slidingAverage + slidingAverageB * fps;
                     fpsEl.textContent = slidingAverage.toFixed(1) + ' (' + fps.toFixed(2) + ')';
 
-                    for (let i = 0; i < layout.length; i += 1) {
-                        if (frames[i]) {
-                            const tile = layout[i];
-                            ctx.drawImage(frames[i], tile.x * MODEL_SCALE, tile.y * MODEL_SCALE);
-                            frames[i].close();
+                    if (frames.length === 1) {
+                        ctx.drawImage(frames[0], 0, 0);
+                        frames[0].close();
+                    } else {
+                        for (let i = 0; i < layout.length; i += 1) {
+                            if (frames[i]) {
+                                const tile = layout[i];
+                                ctx.drawImage(frames[i], tile.x * model.scale, tile.y * model.scale);
+                                frames[i].close();
+                            }
                         }
                     }
                 }
