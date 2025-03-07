@@ -21,7 +21,7 @@ export async function* getRawFrames(stream, current) {
 
         const unexpectedDims = current.height !== frame.codedHeight || current.width !== frame.codedWidth;
         if (firstFrame || unexpectedDims) {
-            console.log(frame.format, frame.codedWidth, frame.codedHeight, frame.codedRect.toJSON(), frame.visibleRect.toJSON(), frame.colorSpace.toJSON());
+            // console.log(frame.format, frame.codedWidth, frame.codedHeight, frame.codedRect.toJSON(), frame.visibleRect.toJSON(), frame.colorSpace.toJSON());
             frameData = {
                 format: frame.format,
                 codedWidth: frame.codedWidth,

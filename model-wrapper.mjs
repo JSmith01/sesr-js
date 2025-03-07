@@ -4,27 +4,30 @@ import ImageConverter from './image-converter.mjs';
 export const MIN_TILE_OVERLAP = 8;
 
 export default class ModelWrapper {
-    constructor(width, height, model) {
-        this._model = model;
-        this._initModel(model);
+    constructor(width, height, modelInit) {
+        this._model = modelInit;
+        this._initModel(modelInit);
 
         this.width = width;
         this.height = height;
 
-        if (model.height < height || model.width < width) {
+        if (modelInit.height < height || modelInit.width < width) {
             this._tiled = true;
-            this.layout = this.makeLayout(model);
+            this.layout = this.makeLayout(modelInit);
         } else {
             this._tiled = false;
         }
 
-        this.converter = new ImageConverter();
+        this.converter = new ImageConverter(width, height);
 
-        this.inputFrame = this.converter.getInputBufferView(width, height, model.channels);
-        this.inputBuffer = this.converter.getOutputBufferView(model.width, model.height);
-        this.inputTensor = new ort.Tensor(this.inputBuffer, [1, model.channels, model.height, model.width]);
+        this.inputFrame = this.converter.getInputBufferView(width, height, modelInit.channels);
+        console.log('Model init', modelInit);
+        this.inputBuffer = this.converter.getOutputBufferView(modelInit.width, modelInit.height);
+        this.inputTensor = new ort.Tensor(this.inputBuffer, [1, modelInit.channels, modelInit.height, modelInit.width]);
 
-        this.outputBuffer = new Uint8ClampedArray((model.width * model.scale) * (model.height * model.scale) * model.channels);
+        this.outputBuffer = new Uint8ClampedArray(
+            (modelInit.width * modelInit.scale) * (modelInit.height * modelInit.scale) * modelInit.channels
+        );
     }
 
     _initModel(model) {
@@ -34,7 +37,18 @@ export default class ModelWrapper {
             executionProviders: ['webgpu'], // the most performant
             preferredOutputLocation: 'cpu-pinned',
             ...model.additionalParameters,
+        }).then(model => {
+            console.log('MODEL', model);
+            this._inputName = model.inputNames[0];
+            this._outputName = model.outputNames[0];
+            console.log(`Param names: input=${this._inputName}, output=${this._outputName}`);
+
+            return model;
         });
+    }
+
+    destroy() {
+        this.modelPromise.then(model => model.release());
     }
 
     makeLayout(model) {
@@ -68,13 +82,13 @@ export default class ModelWrapper {
         if (!this._tiled) {
             this.converter.convertI420ToCHW(this.width, this.height);
 
-            return [this.prepareOutput(await this.modelPromise.then(model => model.run({ [this._model.inputName]: this.inputTensor })))];
+            return [this.prepareOutput(await this.modelPromise.then(model => model.run({ [this._inputName]: this.inputTensor })))];
         }
 
         const frames = [];
         for(const tile of this.layout) {
             this.converter.convertI420TileToCHW(tile.x, tile.y, model.width, model.height, this.width, this.height);
-            const result = await this.modelPromise.then(model => model.run({ image: this.inputTensor }));
+            const result = await this.modelPromise.then(model => model.run({ [this._inputName]: this.inputTensor }));
             frames.push(this.prepareOutput(result));
         }
 
@@ -83,7 +97,7 @@ export default class ModelWrapper {
 
     prepareOutput(result) {
         const model = this._model;
-        const { data } = result[model.outputName];
+        const { data } = result[this._outputName];
         let ptr = 0;
         const ln = this.outputBuffer.length;
         while (ptr < ln) {

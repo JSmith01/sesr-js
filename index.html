@@ -48,7 +48,6 @@
             let model = models.quickSr2x360;
             let modelWrapper = new ModelWrapper(WIDTH, HEIGHT, model);
 
-
             import { passViaWebRTC } from './webrtc-pass.mjs';
 
             const streamButton = document.getElementById('stream');
@@ -62,7 +61,7 @@
             const fpsEl = document.getElementById('fps');
             const mlSel = document.getElementById('ml');
             const resSel = document.getElementById('res');
-            const okBtn = document.getElementById('res');
+            const okBtn = document.getElementById('ok');
             okBtn.onclick = () => {
                 if (streamButton.disabled) return;
 
@@ -80,6 +79,9 @@
                 }
                 outputCanvas.width = WIDTH * model.scale;
                 outputCanvas.height = HEIGHT * model.scale;
+                if (modelWrapper) {
+                    modelWrapper.destroy();
+                }
                 modelWrapper = new ModelWrapper(WIDTH, HEIGHT, model);
             };
 

@@ -11,22 +11,39 @@ function loadWasm(imports) {
   }
   return new WebAssembly.Instance(module, imports);
 }
+const alignSizeTo16 = (n) => Math.ceil(n / 16) * 16;
 class ImageConverter {
-  static maxDimension = 1920;
-  static getPages() {
-    return Math.ceil(ImageConverter.maxDimension * ImageConverter.maxDimension / 8192);
+  static maxWidth = 1280;
+  static maxHeight = 720;
+  currentMaxSize;
+  memory;
+  outputPtr;
+  instance;
+  wasmHelpers;
+  constructor(width = ImageConverter.maxWidth, height = ImageConverter.maxHeight) {
+    this.adjustMemory(width, height);
+    this.instance = loadWasm({ env: { memory: this.memory } });
+    this.wasmHelpers = this.instance.exports;
   }
-  memory = new WebAssembly.Memory({ initial: ImageConverter.getPages() });
-  outputPtr = this.memory.buffer.byteLength / 2;
-  instance = loadWasm({ env: { memory: this.memory } });
-  wasmHelpers = this.instance.exports;
+  _getAlignedYUVBufferSize() {
+    return alignSizeTo16(this.currentMaxSize * 1.5);
+  }
+  _getMemorySize() {
+    const alignedYUVBufferSize = this._getAlignedYUVBufferSize();
+    const alignedOutputBufferSize = alignSizeTo16(this.currentMaxSize * 12);
+    return Math.ceil((alignedYUVBufferSize + alignedOutputBufferSize) / 65536);
+  }
   adjustMemory(width, height) {
-    if (width * height <= ImageConverter.maxDimension * ImageConverter.maxDimension) return;
-    const pagesReserved = ImageConverter.maxDimension;
-    ImageConverter.maxDimension = Math.ceil(Math.max(width, height) / 4) * 4;
-    const pagesNeeded = ImageConverter.getPages();
-    this.memory.grow(pagesNeeded - pagesReserved);
-    this.outputPtr = this.memory.buffer.byteLength / 2;
+    if (this.currentMaxSize > 0 && width * height <= this.currentMaxSize) return;
+    this.currentMaxSize = width * height;
+    const pagesNeeded = this._getMemorySize();
+    this.outputPtr = this._getAlignedYUVBufferSize();
+    if (this.memory) {
+      const pagesReserved = this.memory.buffer.byteLength / 65536;
+      this.memory.grow(pagesNeeded - pagesReserved);
+    } else {
+      this.memory = new WebAssembly.Memory({ initial: pagesNeeded });
+    }
   }
   getInputBufferView(width, height, channels = 3) {
     return new Uint8Array(this.memory.buffer, 0, width * height * (channels === 3 ? 1.5 : 1));

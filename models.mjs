@@ -5,8 +5,6 @@ export const sesrM5 = {
     channels: 3,
     scale: 4,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const quickSr4x180 = {
@@ -16,8 +14,6 @@ export const quickSr4x180 = {
     channels: 3,
     scale: 4,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const quickSr2x360 = {
@@ -27,8 +23,6 @@ export const quickSr2x360 = {
     channels: 3,
     scale: 2,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const quickSr2x1080 = {
@@ -38,8 +32,6 @@ export const quickSr2x1080 = {
     channels: 3,
     scale: 2,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const xlsr4x180 = {
@@ -49,8 +41,6 @@ export const xlsr4x180 = {
     channels: 3,
     scale: 4,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const xlsr2x360 = {
@@ -60,8 +50,6 @@ export const xlsr2x360 = {
     channels: 3,
     scale: 2,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const xlsr2x1080 = {
@@ -71,8 +59,6 @@ export const xlsr2x1080 = {
     channels: 3,
     scale: 2,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const sesr_m5_4x180 = {
@@ -82,8 +68,6 @@ export const sesr_m5_4x180 = {
     channels: 3,
     scale: 4,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const sesr_m5_2x360 = {
@@ -93,8 +77,6 @@ export const sesr_m5_2x360 = {
     channels: 3,
     scale: 2,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
 
 export const sesr_m5_2x1080 = {
@@ -104,6 +86,4 @@ export const sesr_m5_2x1080 = {
     channels: 3,
     scale: 2,
     additionalParameters: {},
-    inputName: 'image',
-    outputName: 'upscaled_image',
 };
