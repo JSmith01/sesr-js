@@ -80,7 +80,7 @@ export default class ModelWrapper {
     async processFrame() {
         const model = this._model;
         if (!this._tiled) {
-            this.converter.convertI420ToCHW(this.width, this.height);
+            this.converter.convertI420ToCHWBilinear(this.width, this.height);
 
             return [this.prepareOutput(await this.modelPromise.then(model => model.run({ [this._inputName]: this.inputTensor })))];
         }
