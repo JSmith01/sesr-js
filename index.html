@@ -32,6 +32,7 @@
             <label>Screen: <input type="checkbox" id="screen"></label>
             <button id="stream" disabled>Stream</button>
             <button id="stop" disabled>Stop</button>
+            <span>model: <span id="modelName"></span></span>
         </div>
         
         <video id="wrtc" muted autoplay></video>
@@ -49,16 +50,14 @@ import { getRawFrames } from './raw-frames.mjs';
 import ModelWrapper from './model-wrapper.mjs';
 import * as models from './models.mjs';
 
-let WIDTH = 640, HEIGHT = 360;
-let model = models.quickSr2x360;
-let modelWrapper = new ModelWrapper(WIDTH, HEIGHT, model);
+let WIDTH, HEIGHT;
+let model;
+let modelWrapper;
 
 import { passViaWebRTC } from './webrtc-pass.mjs';
 
 const streamButton = document.getElementById('stream');
 const outputCanvas = document.getElementById('outputCanvas');
-outputCanvas.width = WIDTH * model.scale;
-outputCanvas.height = HEIGHT * model.scale;
 
 const ctx = outputCanvas.getContext('2d');
 const stopButton = document.getElementById('stop');
@@ -67,16 +66,17 @@ const fpsEl = document.getElementById('fps');
 const mlSel = document.getElementById('ml');
 const resSel = document.getElementById('res');
 const okBtn = document.getElementById('ok');
-okBtn.onclick = () => {
-    if (streamButton.disabled) return;
+const modelNameEl = document.getElementById('modelName');
 
-    const modelName = mlSel.value + resSel.value;
+function selectModel(modelFamily, modelSize) {
+    const modelName = modelFamily + modelSize;
+
     if (!models[modelName]) {
         console.warn(`No model ${modelName}`);
         return;
     }
     model = models[modelName];
-    switch (resSel.value) {
+    switch (modelSize) {
         case '4x180': WIDTH = 320; HEIGHT = 180; break;
         case '2x360': WIDTH = 640; HEIGHT = 360; break;
         case '2x1080': WIDTH = 1920; HEIGHT = 1080; break;
@@ -88,6 +88,15 @@ okBtn.onclick = () => {
         modelWrapper.destroy();
     }
     modelWrapper = new ModelWrapper(WIDTH, HEIGHT, model);
+    modelNameEl.innerText = model.file.replace('.onnx', '');
+}
+
+selectModel('quickSr', '4x180');
+
+okBtn.onclick = () => {
+    if (streamButton.disabled) return;
+
+    selectModel(mlSel.value, resSel.value);
 };
 
 streamButton.disabled = false;
