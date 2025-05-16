@@ -8,6 +8,8 @@ It wasn't possible to make use of `transformers.js` for the purpose, so it is ba
 
 Inference engine is configured to use WebGPU, since WebGL doesn't work at all, and CPU-based suffers from poor performance.
 
+Makes use of the compiled [ai-image-converter](https://github.com/JSmith01/ai-image-converter)
+to convert I420 video frames to input tensors.
 
 ## License
 
