@@ -25,6 +25,15 @@ export const quickSr2x360 = {
     additionalParameters: {},
 };
 
+export const bicubicpp2x360 = {
+    file: 'bicubicpp-x2-c32-640x360-fp32.onnx',
+    width: 640,
+    height: 360,
+    channels: 3,
+    scale: 2,
+    additionalParameters: {},
+};
+
 export const quickSr2x1080 = {
     file: 'qai-hub/quicksrnetsmall-2x-1080p.onnx',
     width: 1920,
